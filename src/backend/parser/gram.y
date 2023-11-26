@@ -449,6 +449,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				TriggerTransitions TriggerReferencing
 				vacuum_relation_list opt_vacuum_relation_list
 				drop_option_list pub_obj_list
+				rename_table_clause_list rename_table_clause
 
 %type <node>	opt_routine_body
 %type <groupclause> group_clause
@@ -9274,6 +9275,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->subname = NULL;
 					n->newname = $6;
 					n->missing_ok = false;
+
 					$$ = (Node *) n;
 				}
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME TO name
@@ -9649,6 +9651,39 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = false;
 					$$ = (Node *) n;
 				}
+			| RENAME TABLE rename_table_clause_list
+				{
+					RenameStmt *n = makeNode(RenameStmt);
+
+					n->renameType = OBJECT_TABLE;
+					n->relation = NULL;
+					n->subname = NULL;
+					n->newname = NULL;
+					n->missing_ok = false;
+					n->targetList = $3;
+
+					$$ = (Node *) n;
+				}
+        ;
+rename_table_clause_list:
+            rename_table_clause                 { $$ = $1; }
+            | rename_table_clause_list ',' rename_table_clause  { $$ = list_concat($1,$3); }
+        ;
+rename_table_clause:
+            relation_expr TO name
+            {
+                RenameStmt *n = makeNode(RenameStmt);
+
+					n->renameType = OBJECT_TABLE;
+					n->relation = $1;
+					n->subname = NULL;
+					n->newname = $3;
+					n->missing_ok = false;
+
+                $$ = list_make1(n);
+            }
+        
+		;
 		;
 
 opt_column: COLUMN

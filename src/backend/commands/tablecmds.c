@@ -635,6 +635,8 @@ static void refuseDupeIndexAttach(Relation parentIdx, Relation partIdx,
 static List *GetParentedForeignKeyRefs(Relation partition);
 static void ATDetachCheckNoForeignKeyRefs(Relation partition);
 static char GetAttributeCompression(Oid atttypid, char *compression);
+static ObjectAddress ExecRenameTable(RenameStmt *stmt);
+
 
 
 /* ----------------------------------------------------------------
@@ -3789,12 +3791,30 @@ RenameConstraint(RenameStmt *stmt)
  * RENAME
  */
 ObjectAddress
+ExecRenameTable(RenameStmt *stmt)
+{
+    ListCell   *lc;
+    ObjectAddress address;
+    RenameStmt *tle;
+    foreach(lc, stmt->targetList)
+    {
+        tle = (RenameStmt *) lfirst(lc);
+        address = RenameRelation(tle);
+    }
+    return address;
+}
+
+ObjectAddress
 RenameRelation(RenameStmt *stmt)
 {
 	bool		is_index_stmt = stmt->renameType == OBJECT_INDEX;
 	Oid			relid;
 	ObjectAddress address;
 
+	if(stmt->targetList)
+	{
+		return ExecRenameTable(stmt);
+	}
 	/*
 	 * Grab an exclusive lock on the target table, index, sequence, view,
 	 * materialized view, or foreign table, which we will NOT release until
